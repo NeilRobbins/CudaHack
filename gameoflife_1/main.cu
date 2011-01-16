@@ -2,13 +2,18 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define WIDTH 5
-#define HEIGHT 5
+#define WIDTH 1000
+#define HEIGHT 1000
 #define GRID_SIZE WIDTH * HEIGHT
 #define ACTUAL_GRID_SIZE sizeof(char) * GRID_SIZE
 #define BLOCK_WIDTH 1
 #define BLOCK_HEIGHT 1
-#define NO_OF_GENERATIONS_TO_RUN 5 
+#define NO_OF_GENERATIONS_TO_RUN 5000
+
+//#define DUMPFULL
+#define DUMPCOUNT
+//#define CUBE
+
 
 __global__ void runGeneration(char currentModel[], char nextModel[]);
 __device__ void getBlock(int x, int y, int* topLeftXOfBlock, int* topLeftYOfBlock);
@@ -19,7 +24,10 @@ __device__ void runRules(char model[], int x, int y, char* fate);
 void printGrid(char grid[]);
 
 int main(char** args, int argCount) {
-    char clientModel[GRID_SIZE];
+    printf("%d;%d\n", WIDTH, HEIGHT);
+    srand( time(NULL) );
+
+     char clientModel[GRID_SIZE];
     char* deviceModel = 0;
     char* deviceModel2 = 0;
        
@@ -51,7 +59,7 @@ int main(char** args, int argCount) {
 }
 
 void printGrid(char grid[]) {
-
+#ifdef CUBE
     for(int y = 0; y < HEIGHT ; y++) {
        	for(int x = 0; x < WIDTH; x++) {
 	    printf("%d", grid[x + y * WIDTH]);
@@ -59,6 +67,28 @@ void printGrid(char grid[]) {
 	printf("\n");	
     }
     printf("\n");
+#endif
+
+#ifdef DUMPFULL 
+
+    for(int y = 0; y < HEIGHT ; y++) {
+       	for(int x = 0; x < WIDTH; x++) {
+	    printf("%d", grid[x + y * WIDTH]);
+	}
+    }
+
+#endif
+
+#ifdef DUMPCOUNT
+
+    int count = 0;
+    for(int x = 0; x < GRID_SIZE ; x++){
+	if(grid[x] == 1) count++;
+    }
+    printf("%d\n", count);
+
+#endif
+
 }
 
 __global__ void runGeneration(char currentModel[], char nextModel[]) {
