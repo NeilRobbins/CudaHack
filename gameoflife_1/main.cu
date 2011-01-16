@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define WIDTH 150
-#define HEIGHT 150
+#define WIDTH 5
+#define HEIGHT 5
 #define GRID_SIZE WIDTH * HEIGHT
 #define ACTUAL_GRID_SIZE sizeof(char) * GRID_SIZE
 #define BLOCK_WIDTH 1
 #define BLOCK_HEIGHT 1
+#define NO_OF_GENERATIONS_TO_RUN 5 
 
 __global__ void runGeneration(char currentModel[], char nextModel[]);
 __device__ void getBlock(int x, int y, int* topLeftXOfBlock, int* topLeftYOfBlock);
@@ -23,44 +24,51 @@ int main(char** args, int argCount) {
     char* deviceModel2 = 0;
        
     for(int index = 0 ; index < GRID_SIZE ; index++){
-    	clientModel[index] = rand() % 2;
+    	clientModel[index] =  rand() % 2;
     }
+
+    printGrid(clientModel);
 
     cudaMalloc( (void**)&deviceModel, ACTUAL_GRID_SIZE);
     cudaMalloc( (void**)&deviceModel2, ACTUAL_GRID_SIZE);
     dim3 grid(WIDTH, HEIGHT);
 
-
     cudaMemcpy( deviceModel, clientModel, ACTUAL_GRID_SIZE, cudaMemcpyHostToDevice);
 
-    runGeneration<<<grid,1>>>(deviceModel, deviceModel2);
-
-    cudaMemcpy( clientModel, deviceModel2, ACTUAL_GRID_SIZE, cudaMemcpyDeviceToHost );
-
-
-    printGrid(clientModel);
+    char* swapPointer = 0;
+    for (int generation = 0; generation < NO_OF_GENERATIONS_TO_RUN; generation++) {
+	runGeneration<<<grid,1>>>(deviceModel, deviceModel2);
+	swapPointer = deviceModel;
+	deviceModel = deviceModel2;
+	deviceModel2 = swapPointer;
+    
+    	cudaMemcpy( clientModel, deviceModel, ACTUAL_GRID_SIZE, cudaMemcpyDeviceToHost );
+    	printGrid(clientModel);
+    }
 
     cudaFree(deviceModel);
     cudaFree(deviceModel2);
 }
 
 void printGrid(char grid[]) {
-    for(int x = 0; x < WIDTH; x++) {
-        for(int y = 0; y < HEIGHT; y++) {
-            printf("%d", grid[x*y]);
-        }
-        printf("\n");
+
+    for(int y = 0; y < HEIGHT ; y++) {
+       	for(int x = 0; x < WIDTH; x++) {
+	    printf("%d", grid[x + y * WIDTH]);
+	}
+	printf("\n");	
     }
     printf("\n");
 }
 
 __global__ void runGeneration(char currentModel[], char nextModel[]) {
     int startx, starty;
+
     getBlock(blockIdx.x, blockIdx.y, &startx, &starty);
     for (int x = startx; x < startx + BLOCK_WIDTH; x++) {
         for (int y = starty; y < starty + BLOCK_HEIGHT; y++) {
             int index = x + (y * WIDTH);
-            runRules(currentModel, x, y, &nextModel[index]);
+            runRules(currentModel, x, y, nextModel + index);
         }
     }
 }
@@ -84,17 +92,16 @@ __device__ void getCountOfNeighbours(char model[], int x, int y, int* neighbourC
 
 __device__ void addCellValue(char model[], int x, int y, int* value) {
     if (x < 0 || y < 0) return;
-    if (x > WIDTH || y > HEIGHT) return;
-
-    int index = x + (y * WIDTH);
-    *value += model[index];
+    if (x >= WIDTH || y >= HEIGHT) return;
+    *value += model[x + y * WIDTH];
 }
 
 __device__ void runRules(char model[], int x, int y, char* fate) {
     int count;
     getCountOfNeighbours(model, x, y, &count);
     int index = x + (y * WIDTH);
-    if (model[index] == 0) {
+    
+    if (model[index] == 1) {
         if (count < 2 || count > 3) *fate = 0;
         if (count == 2 || count == 3) *fate = 1;
     } else {
@@ -102,5 +109,3 @@ __device__ void runRules(char model[], int x, int y, char* fate) {
         else { *fate = 0; }
     } 
 }
-
-
