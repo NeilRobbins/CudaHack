@@ -1,25 +1,34 @@
 #include <stdio.h>
 
-
-__global__ void add(int a, int b, int *c) {
-	*c = a + b;
+// So, a __global__ to tell NVCC this is a device function for calling from the host
+// and a pointer to some memory to write the result to
+__global__ void addTwoNumbers(int x, int y, int *result) {
+	*result = x + y;
 }
 
 
-int main(char** args, int argc)
+int main(int argc, char** args)
 {
-	int c;
-	int *dev_c;
+	// This is in system memory
+	int cpuVisibleResult;
 
-	cudaMalloc( (void**)&dev_c, sizeof(int) );
+	// This is just an unitialized pointer
+	int *gpuVisibleResult;
 
-	add<<<1,1>>>(2,7, dev_c);
+	// This sets that pointer to point at a memory location on device memory
+	cudaMalloc( (void**)&gpuVisibleResult, sizeof(int) );
 
-	cudaMemcpy( &c, dev_c, sizeof(int), cudaMemcpyDeviceToHost );
+	// Call the method, ignore 1,1 for now
+	addTwoNumbers<<<1,1>>>(2,7, gpuVisibleResult);
 
-	printf( " 2 + 7 = %d\n", c);
+	// Download the result from the device to the host
+	cudaMemcpy( &cpuVisibleResult, gpuVisibleResult, sizeof(int), cudaMemcpyDeviceToHost );
 
-	cudaFree( dev_c );
+	// Print the results
+	printf( " 2 + 7 = %d\n", cpuVisibleResult);
 
+	// Free up that memory on the device
+	cudaFree( gpuVisibleResult );
 
+	return 1;
 }
