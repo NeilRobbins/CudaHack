@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define WIDTH 1000
-#define HEIGHT 1000
+#define WIDTH 10
+#define HEIGHT 10
 #define GRID_SIZE WIDTH * HEIGHT
 #define ACTUAL_GRID_SIZE sizeof(char) * GRID_SIZE
 #define BLOCK_WIDTH 1
@@ -11,8 +11,8 @@
 #define NO_OF_GENERATIONS_TO_RUN 5000
 
 //#define DUMPFULL
-#define DUMPCOUNT
-//#define CUBE
+//#define DUMPCOUNT
+#define CUBE
 
 
 __global__ void runGeneration(char currentModel[], char nextModel[]);
@@ -23,7 +23,7 @@ __device__ void runRules(char model[], int x, int y, char* fate);
 
 void printGrid(char grid[]);
 
-int main(char** args, int argCount) {
+int main(int argc, char** args) {
     printf("%d;%d\n", WIDTH, HEIGHT);
     srand( time(NULL) );
 
@@ -60,6 +60,8 @@ int main(char** args, int argCount) {
 
 void printGrid(char grid[]) {
 #ifdef CUBE
+    system("clear");
+
     for(int y = 0; y < HEIGHT ; y++) {
        	for(int x = 0; x < WIDTH; x++) {
 	    printf("%d", grid[x + y * WIDTH]);
@@ -94,13 +96,16 @@ void printGrid(char grid[]) {
 __global__ void runGeneration(char currentModel[], char nextModel[]) {
     int startx, starty;
 
+    nextModel[blockIdx.x + blockIdx.y * WIDTH] = 5;
+
+/*
     getBlock(blockIdx.x, blockIdx.y, &startx, &starty);
     for (int x = startx; x < startx + BLOCK_WIDTH; x++) {
         for (int y = starty; y < starty + BLOCK_HEIGHT; y++) {
             int index = x + (y * WIDTH);
             runRules(currentModel, x, y, nextModel + index);
         }
-    }
+    } */
 }
 
 __device__ void getBlock(int x, int y, int* topLeftXOfBlock, int* topLeftYOfBlock) {

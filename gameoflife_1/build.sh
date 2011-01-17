@@ -1,2 +1,1 @@
-nvcc -m64 -o main main.cu
-main
+nvcc -o main main.cu
