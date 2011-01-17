@@ -2,13 +2,13 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define WIDTH 10
-#define HEIGHT 10
+#define WIDTH 100
+#define HEIGHT 100
 #define GRID_SIZE WIDTH * HEIGHT
 #define ACTUAL_GRID_SIZE sizeof(char) * GRID_SIZE
 #define BLOCK_WIDTH 1
 #define BLOCK_HEIGHT 1
-#define NO_OF_GENERATIONS_TO_RUN 5000
+#define NO_OF_GENERATIONS_TO_RUN 500
 
 //#define DUMPFULL
 //#define DUMPCOUNT
@@ -96,16 +96,13 @@ void printGrid(char grid[]) {
 __global__ void runGeneration(char currentModel[], char nextModel[]) {
     int startx, starty;
 
-    nextModel[blockIdx.x + blockIdx.y * WIDTH] = 5;
-
-/*
     getBlock(blockIdx.x, blockIdx.y, &startx, &starty);
     for (int x = startx; x < startx + BLOCK_WIDTH; x++) {
         for (int y = starty; y < starty + BLOCK_HEIGHT; y++) {
             int index = x + (y * WIDTH);
             runRules(currentModel, x, y, nextModel + index);
         }
-    } */
+    }
 }
 
 __device__ void getBlock(int x, int y, int* topLeftXOfBlock, int* topLeftYOfBlock) {
