@@ -15,8 +15,10 @@ __device__ void getCountOfNeighbours(char model[], int x, int y, int* neighbourC
 __device__ void addCellValue(char model[], int x, int y, int* value);
 __device__ void runRules(char model[], int x, int y, char* fate);
 
-#define WIDTH 512
-#define HEIGHT 512
+#define WIDTH 1760 
+#define HEIGHT 1024
+#define BLOCK_SIZE 16
+
 #define GRID_SIZE WIDTH * HEIGHT
 #define ACTUAL_GRID_SIZE GRID_SIZE * sizeof(char)
 
@@ -29,13 +31,14 @@ void doEverything(){
       	char* swapPointer = 0;
 	unsigned int* pBuffer;
 
-	dim3 grid(512,512, 1);
+	dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 gridSize(WIDTH / BLOCK_SIZE, HEIGHT / BLOCK_SIZE );
 
 
 	lockTarget(&pBuffer);        
 
 	// This will do all the logic and rendering in a single remote call
-	runGeneration<<<grid,1>>>(pBuffer, g_deviceModel1, g_deviceModel2);
+	runGeneration<<<gridSize,blockSize>>>(pBuffer, g_deviceModel1, g_deviceModel2);
 
 	unlockTarget(pBuffer);
 
@@ -78,8 +81,8 @@ int main(int argc, char** args) {
 
 __global__ void runGeneration(unsigned int* pTarget, char currentModel[], char nextModel[]) {
 	
-	int x = blockIdx.x;
-	int y = blockIdx.y;
+	int x =  blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
 
 	int index = x + (y * WIDTH);
         runRules(currentModel, x, y, nextModel + index);
