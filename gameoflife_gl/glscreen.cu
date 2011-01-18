@@ -29,13 +29,12 @@ void displayCallback();
 void createBuffers();
 void releaseBuffers();
 
-void initGlApp(unsigned int width, unsigned int height, void (*renderCallback)(void)){
+void setupGlApp(unsigned int width, unsigned int height){
         
 	int argc = 0;
 	char** args = 0;
 	g_width = width;
 	g_height = height;
-
 	glutInit(&argc, args);
         glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
         glutInitWindowSize(g_width, g_height);
@@ -45,24 +44,27 @@ void initGlApp(unsigned int width, unsigned int height, void (*renderCallback)(v
         glutIdleFunc(idleCallback);
         glewInit();
 
-
-        cudaSetDevice(0);
-        cudaGLSetGLDevice(0);
-
         createBuffers();
         atexit(releaseBuffers);
-        glutMainLoop();
-        cudaThreadExit();
 	
 }
 
-void lockTarget(unsigned int** pTarget){
+void runGlApp(void (*renderCallback)(void))
+{
+	g_renderCallback = renderCallback;
+	glutMainLoop();
+        cudaThreadExit();
 
 }
 
+void lockTarget(unsigned int** pTarget){
+	CUDA_SAFE_CALL(cudaGraphicsMapResources(1, &g_cudaScreenPixelBuffer, 0));
+	size_t num_bytes;
+	CUDA_SAFE_CALL(cudaGraphicsResourceGetMappedPointer( (void**)pTarget, &num_bytes, g_cudaScreenPixelBuffer));
+}
+
 void unlockTarget(unsigned int* pTarget){
-
-
+	CUDA_SAFE_CALL(cudaGraphicsUnmapResources(1, &g_cudaScreenPixelBuffer, 0));
 }
 
 void reshapeCallback(int width, int height){
@@ -79,7 +81,7 @@ void reshapeCallback(int width, int height){
 
 void displayCallback()
 {	
-//	g_renderCallback();
+	g_renderCallback();
 
         glClear(GL_COLOR_BUFFER_BIT);
         glDisable(GL_DEPTH_TEST);

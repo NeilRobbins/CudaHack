@@ -39,12 +39,17 @@ void releaseBuffers();
 
 int main(int argc, char** args){
 	initGL(argc, args);
-	
+
+	char* pBuffer;
+
 	// Just use the first device we find
 	// NOTE: Found this out hte hard way, we HAVE to do this
 	// In order to use interopability
 	cudaSetDevice(0);
     	cudaGLSetGLDevice(0);
+
+
+	cudaMalloc( (void**)&pBuffer, sizeof(char) * 512 * 512);
 
 	createBuffers();
 	atexit(releaseBuffers);

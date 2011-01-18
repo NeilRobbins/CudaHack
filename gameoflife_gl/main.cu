@@ -1,55 +1,132 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <math.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <driver_functions.h>
+#include <cuda_gl_interop.h>
+
+
 
 #include "glscreen.h"
 
+__global__ void runGeneration(unsigned int* pTarget, char currentModel[], char nextModel[]);
+__device__ void getBlock(int x, int y, int* topLeftXOfBlock, int* topLeftYOfBlock);
+__device__ void getCountOfNeighbours(char model[], int x, int y, int* neighbourCount);
+__device__ void addCellValue(char model[], int x, int y, int* value);
+__device__ void runRules(char model[], int x, int y, char* fate);
 
-const int SCREENWIDTH = 512;
-const int SCREENHEIGHT = 512;
+#define WIDTH 512
+#define HEIGHT 512
+#define GRID_SIZE WIDTH * HEIGHT
+#define ACTUAL_GRID_SIZE GRID_SIZE * sizeof(char)
 
-void renderCallback();
 
-int main(int argc, char** args){
-	
-	// Sets up a window, texture, loop, etc
-	initGlApp(SCREENWIDTH, SCREENHEIGHT, renderCallback);
-	
-	return 0;
+char* g_deviceModel1 = 0;
+char* g_deviceModel2 = 0;
+
+
+void doEverything(){
+      	char* swapPointer = 0;
+	unsigned int* pBuffer;
+
+	dim3 grid(512,512, 1);
+
+
+	lockTarget(&pBuffer);        
+
+	// This will do all the logic and rendering in a single remote call
+	runGeneration<<<grid,1>>>(pBuffer, g_deviceModel1, g_deviceModel2);
+
+	unlockTarget(pBuffer);
+
+	// And now we swap the inputs
+        swapPointer = g_deviceModel1;
+        g_deviceModel1 = g_deviceModel2;
+        g_deviceModel2 = swapPointer;
 }
 
-void renderCallback(){
-	
-	unsigned int* pTarget;
-	lockTarget(&pTarget);
+int main(int argc, char** args) {
 
-	// Call device function against target
+	char g_clientModel[GRID_SIZE];
+	cudaSetDevice(0);
+        cudaGLSetGLDevice(0);
 
-	unlockTarget(pTarget);
+	setupGlApp(WIDTH, HEIGHT);
 
+
+	srand( time(NULL) );
+       
+	for(int index = 0 ; index < GRID_SIZE ; index++){
+		g_clientModel[index] =  rand() % 2;
+    	}
+
+    	cudaMalloc( (void**)&g_deviceModel1, ACTUAL_GRID_SIZE);
+    	cudaMalloc( (void**)&g_deviceModel2, ACTUAL_GRID_SIZE);
+
+    	cudaMemcpy( g_deviceModel1, g_clientModel, ACTUAL_GRID_SIZE, cudaMemcpyHostToDevice);
+
+
+    	// Run the darned app
+	runGlApp(doEverything);	
+
+
+    	cudaFree(g_deviceModel1);
+    	cudaFree(g_deviceModel2);
 }
 
 
 
+__global__ void runGeneration(unsigned int* pTarget, char currentModel[], char nextModel[]) {
+	
+	int x = blockIdx.x;
+	int y = blockIdx.y;
 
+	int index = x + (y * WIDTH);
+        runRules(currentModel, x, y, nextModel + index);
 
+	if(nextModel[index] == 1){
+		pTarget[index] = 0xFFFFFFFF;
+	}
+	else
+	{
+		pTarget[index] = 0x00000000;
+	}		
 
+}
 
+__device__ void getBlock(int x, int y, int* topLeftXOfBlock, int* topLeftYOfBlock) {
+    *topLeftXOfBlock = x;
+    *topLeftYOfBlock = y;
+}
 
+__device__ void getCountOfNeighbours(char model[], int x, int y, int* neighbourCount) {
+   *neighbourCount = 0;
+    addCellValue(model, x + 1, y, neighbourCount);
+    addCellValue(model, x + 1, y + 1, neighbourCount);
+    addCellValue(model, x + 1, y - 1, neighbourCount);
+    addCellValue(model, x, y + 1, neighbourCount);
+    addCellValue(model, x, y - 1, neighbourCount);
+    addCellValue(model, x - 1, y, neighbourCount);
+    addCellValue(model, x - 1, y + 1, neighbourCount);
+    addCellValue(model, x - 1, y - 1, neighbourCount);
+}
 
+__device__ void addCellValue(char model[], int x, int y, int* value) {
+    if (x < 0 || y < 0) return;
+    if (x >= WIDTH || y >= HEIGHT) return;
+    *value += model[x + y * WIDTH];
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+__device__ void runRules(char model[], int x, int y, char* fate) {
+    int count;
+    getCountOfNeighbours(model, x, y, &count);
+    int index = x + (y * WIDTH);
+    
+    if (model[index] == 1) {
+        if (count < 2 || count > 3) *fate = 0;
+        if (count == 2 || count == 3) *fate = 1;
+    } else {
+        if (count == 3) { *fate = 1; }
+        else { *fate = 0; }
+    } 
+}
