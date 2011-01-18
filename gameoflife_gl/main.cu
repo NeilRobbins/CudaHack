@@ -5,8 +5,6 @@
 #include <driver_functions.h>
 #include <cuda_gl_interop.h>
 
-
-
 #include "glscreen.h"
 
 __global__ void runGeneration(unsigned int* pTarget, char currentModel[], char nextModel[]);
@@ -115,9 +113,11 @@ __device__ void getCountOfNeighbours(char model[], int x, int y, int* neighbourC
 }
 
 __device__ void addCellValue(char model[], int x, int y, int* value) {
-    if (x < 0 || y < 0) return;
-    if (x >= WIDTH || y >= HEIGHT) return;
-    *value += model[x + y * WIDTH];
+    	if (x < 0) { x = WIDTH-1;}
+	if( y < 0) { y = HEIGHT-1;}
+	if( x >= WIDTH) { x = 0; }
+	if( y >= HEIGHT) { y = 0; }
+    	*value += model[x + y * WIDTH];
 }
 
 __device__ void runRules(char model[], int x, int y, char* fate) {
